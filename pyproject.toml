@@ -1,0 +1,18 @@
+[project]
+name = "vtc"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ipython>=9.8.0",
+    "jupyter>=1.1.1",
+    "pyannote-audio>=3.4.0",
+    "pyannote-core>=5.0.0",
+    "pyannote-metrics>=3.2.1",
+    "segma",
+    "tqdm>=4.67.1",
+]
+
+[tool.uv.sources]
+segma = { git = "https://github.com/arxaqapi/segma", rev = "b2577c8e6c65dca473c3b83e130ee6a78eaf3b64" }

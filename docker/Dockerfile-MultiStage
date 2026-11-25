@@ -1,0 +1,59 @@
+# Docker file for VTC based on a pytorch image
+FROM debian:trixie-slim as build
+
+RUN apt-get update && apt-get upgrade -y \
+ && apt-get install --no-install-recommends -y ca-certificates git curl ffmpeg git-lfs \
+ && git lfs install 
+
+WORKDIR /home/inference
+
+RUN groupadd -g 1000 inference \
+ && useradd --group inference -u 1000 -g 1000 inference \
+ && chown -R inference /home/inference \
+ && chmod -R 744 /home/inference
+
+USER inference
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+ENV PATH="/home/inference/.local/bin:$PATH"
+RUN git clone --recurse-submodules https://github.com/LAAC-LSCP/VTC.git
+
+WORKDIR /home/inference/VTC
+
+RUN uv sync  --frozen --no-cache
+
+######################################################
+# Create the inference container from build results
+
+FROM debian:trixie-slim
+
+RUN apt-get update && apt-get upgrade -y \
+ && apt-get install --no-install-recommends -y ca-certificates git curl ffmpeg git-lfs \
+ && git lfs install 
+
+WORKDIR /home/inference
+
+RUN groupadd -g 1000 inference \
+ && useradd --group inference -u 1000 -g 1000 inference \
+ && chown -R inference /home/inference \
+ && chmod -R 744 /home/inference
+
+USER inference
+
+# Get python and deps
+COPY --from=build --chown=inference:inference /home/inference/.local/share/uv/python .local/share/uv/python
+COPY --from=build --chown=inference:inference /home/inference/VTC VTC
+
+WORKDIR /home/inference/VTC
+#COPY --from=build --chown=inference:inference /home/inference/VTC/.venv .venv
+
+ENV PATH="/home/inference/VTC/.venv/bin:$PATH"
+
+CMD ["python", "scripts/infer.py", "--wavs", "../inputs", "--output", "../outputs", "--recursive_search", "--device", "cpu"]
+
+#CMD ["uv", "run", "scripts/infer.py", "--wavs", "../inputs", "--output", "../outputs", "--recursive_search", "--device", "cpu"]
+
+#TODO:
+# check out uv optimization recommends to remove/externalize cache: see: https://docs.astral.sh/uv/guides/integration/docker/ 
+# can I remove CUDA libs and replace with runtime? see https://mveg.es/posts/optimizing-pytorch-docker-images-cut-size-by-60percent/
